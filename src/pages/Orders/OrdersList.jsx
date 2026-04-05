@@ -4,6 +4,8 @@ import { authFetch } from "../../utils/authFetch";
 import toast from "react-hot-toast";
 import OrderPaymentModal from "./OrderPaymentModal";
 import styles from "./OrdersList.module.css";
+import DeleteOrderModal from "../../components/DeleteOrderModal";
+
 import { BACKEND_URL } from "../../config";
 
 /* ✅ Proper INR Formatter */
@@ -22,6 +24,8 @@ export default function OrdersList() {
 
   const [filterStatus, setFilterStatus] = useState("pending");
   // "pending" | "paid" | "all"
+
+  const [deleteOrder, setDeleteOrder] = useState(null);
 
   const navigate = useNavigate();
 
@@ -66,6 +70,32 @@ export default function OrdersList() {
       month: "short",
       year: "numeric",
     });
+  };
+
+  const handleDelete = (order) => {
+    setDeleteOrder(order);
+  };
+
+  const confirmDelete = async (action) => {
+    try {
+      const res = await authFetch(
+        `${BACKEND_URL}/order/order/${deleteOrder._id}`,
+        {
+          method: "DELETE",
+          body: JSON.stringify({ action }),
+        },
+      );
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.msg);
+
+      toast.success("Order deleted");
+
+      setDeleteOrder(null);
+      loadOrders();
+    } catch (err) {
+      toast.error(err.message);
+    }
   };
 
   /* ===============================
@@ -528,7 +558,12 @@ window.onload = function() {
 
               <button
                 className={styles["btn-edit"]}
-                onClick={() => navigate(`/orders/${o._id}/edit`)}
+                onClick={() =>
+                  navigate(`/orders/${o._id}/edit`, {
+                    replace: true,
+                    state: { from: "orders" },
+                  })
+                }
               >
                 Edit
               </button>
@@ -538,6 +573,13 @@ window.onload = function() {
                 onClick={() => handlePrint(o)}
               >
                 Print
+              </button>
+
+              <button
+                className={styles["btn-delete"]}
+                onClick={() => handleDelete(o)}
+              >
+                Delete
               </button>
             </div>
           </div>
@@ -558,6 +600,14 @@ window.onload = function() {
             setSelectedOrder(null);
             loadOrders(); // 🔥 refresh immediately
           }}
+        />
+      )}
+
+      {deleteOrder && (
+        <DeleteOrderModal
+          order={deleteOrder}
+          onClose={() => setDeleteOrder(null)}
+          onConfirm={confirmDelete}
         />
       )}
     </div>
